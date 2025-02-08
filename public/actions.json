@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "pathPattern": "/",
+      "apiPath": "/api/actions/rps"
+    },
+    {
+      "pathPattern": "/eclipse",
+      "apiPath": "/api/actions/eclipse/rps"
+    }
+  ]
+}
