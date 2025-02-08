@@ -44,8 +44,8 @@ export const POST = async (req: Request) => {
       })
     }
 
-    game.claimed = true
-    await game.save()
+    // game.claimed = true
+    // await game.save()
 
     let image: string = "https://ivory-eligible-hamster-305.mypinata.cloud/ipfs/bafybeidi6qseek67vmmzc7x2ivhswer4dhhquxtzwubjvsq7li2mbd2t24"
 

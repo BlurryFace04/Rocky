@@ -15,10 +15,15 @@ const RockySchema = new Schema({
     type: Number,
     immutable: true
   },
-  outcome : {
+  outcome: {
     type: String,
     enum: ["win", "lose", "draw"],
-    immutable: true
+    set: function(this: { outcome: string | null }, value: string): string {
+      if (this.outcome == null) {
+        return value
+      }
+      return this.outcome
+    }
   },
   timestamp: {
     type: Date,

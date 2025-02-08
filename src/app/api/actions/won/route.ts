@@ -343,6 +343,9 @@ export const POST = async (req: Request) => {
     transaction.feePayer = account
     transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
 
+    game.claimed = true
+    await game.save()
+
     const payload: ActionPostResponse = await createPostResponse({
       fields: {
         type: "transaction",
