@@ -179,14 +179,14 @@ export const POST = async (req: Request) => {
 
     const connection = new Connection(`https://staked.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`)
 
-    // const secretClient = new SecretManagerServiceClient()
-    // const [response] = await secretClient.accessSecretVersion({ name: `projects/435887166123/secrets/rocky-private-key/versions/1` })
-    // if (!response.payload || !response.payload.data) {
-    //   throw new Error('Secret payload is null or undefined')
-    // }
-    // const PRIVATE_KEY = response.payload.data.toString()
+    const secretClient = new SecretManagerServiceClient()
+    const [response] = await secretClient.accessSecretVersion({ name: `projects/435887166123/secrets/rocky-private-key/versions/1` })
+    if (!response.payload || !response.payload.data) {
+      throw new Error('Secret payload is null or undefined')
+    }
+    const PRIVATE_KEY = response.payload.data.toString()
 
-    const PRIVATE_KEY = process.env.PRIVATE_KEY as string
+    // const PRIVATE_KEY = process.env.PRIVATE_KEY as string
 
     const KEYPAIR = Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY))
 

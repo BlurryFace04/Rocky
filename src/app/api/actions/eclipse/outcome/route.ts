@@ -107,14 +107,18 @@ export const POST = async (req: Request) => {
 
     if (randomByte < 77) {  // Approximately 30%
       outcome = "win"; 
-    } else if (randomByte < 192) { // Approximately 45% 
-      outcome = "lose";
+    } else if (randomByte < 115) { // Approximately 15% 
+      outcome = "draw";
     } else {
-      outcome = "draw"; // Approximately 25%
+      outcome = "lose"; // Approximately 55%
     }
 
-    console.log("Outcome:", outcome);
+    // if (randomByte < 256) {  // 100% chance
+    //   outcome = "lose"; 
+    // }
 
+    console.log("Outcome:", outcome);
+    
     rocky.outcome = outcome
     await rocky.save()
 
