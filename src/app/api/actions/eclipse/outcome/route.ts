@@ -105,20 +105,16 @@ export const POST = async (req: Request) => {
     const randomByte = crypto.randomBytes(1)[0]; // Generate one random byte
     console.log("Random byte generated:", randomByte);
 
-    if (randomByte < 77) {  // Approximately 30%
+    if (randomByte < 90) {  // Approximately 35%
       outcome = "win"; 
-    } else if (randomByte < 115) { // Approximately 15% 
-      outcome = "draw";
+    } else if (randomByte < 192) { // Approximately 40% 
+      outcome = "lose";
     } else {
-      outcome = "lose"; // Approximately 55%
+      outcome = "draw"; // Approximately 25%
     }
 
-    // if (randomByte < 256) {  // 100% chance
-    //   outcome = "lose"; 
-    // }
-
     console.log("Outcome:", outcome);
-    
+
     rocky.outcome = outcome
     await rocky.save()
 
@@ -219,9 +215,9 @@ export const POST = async (req: Request) => {
                 label: "Bet Amount in ETH",
                 required: true,
                 options: [
-                  { label: "0.0025 ETH", value: "0.0025"},
                   { label: "0.01 ETH", value: "0.01", selected: true },
-                  { label: "0.05 ETH", value: "0.05" }
+                  { label: "0.05 ETH", value: "0.05" },
+                  { label: "0.1 ETH", value: "0.1" }
                 ]
               },
               {

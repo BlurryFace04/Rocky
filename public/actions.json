@@ -7,6 +7,10 @@
     {
       "pathPattern": "/eclipse",
       "apiPath": "/api/actions/eclipse/rps"
+    },
+    {
+      "pathPattern": "/sonic",
+      "apiPath": "/api/actions/sonic/rps"
     }
   ]
 }

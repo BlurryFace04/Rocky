@@ -72,7 +72,7 @@ export const POST = async (req: Request) => {
 
     transaction.add(
       ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: 69
+        microLamports: 6969
       }),
       new TransactionInstruction({
         programId: new PublicKey(MEMO_PROGRAM_ID),

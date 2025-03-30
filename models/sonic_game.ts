@@ -1,6 +1,6 @@
 import { Schema, model, models } from 'mongoose'
 
-const GameSchema = new Schema({
+const SonicGameSchema = new Schema({
   address: {
     type: String,
     required: [true, 'Address is required'],
@@ -10,6 +10,9 @@ const GameSchema = new Schema({
     type: String,
     required: [true, 'Signature is required'],
     immutable: true
+  },
+  rewardSignature: {
+    type: String
   },
   choice: {
     type: String,
@@ -33,9 +36,6 @@ const GameSchema = new Schema({
     type: Boolean,
     default: false
   },
-  nonce: {
-    type: String
-  },
   timestamp: {
     type: Date,
     default: Date.now,
@@ -43,6 +43,6 @@ const GameSchema = new Schema({
   }
 })
 
-const Game = models.Game || model('Game', GameSchema)
+const SonicGame = models.SonicGame || model('SonicGame', SonicGameSchema)
 
-export default Game
+export default SonicGame

@@ -1,14 +1,9 @@
 import { Schema, model, models } from 'mongoose'
 
-const GameSchema = new Schema({
+const SonicRockySchema = new Schema({
   address: {
     type: String,
     required: [true, 'Address is required'],
-    immutable: true
-  },
-  signature: {
-    type: String,
-    required: [true, 'Signature is required'],
     immutable: true
   },
   choice: {
@@ -20,21 +15,15 @@ const GameSchema = new Schema({
     type: Number,
     immutable: true
   },
-  outcome : {
+  outcome: {
     type: String,
     enum: ["win", "lose", "draw"],
-    immutable: true
-  },
-  claimed: {
-    type: Boolean,
-    default: false
-  },
-  fake: {
-    type: Boolean,
-    default: false
-  },
-  nonce: {
-    type: String
+    set: function(this: { outcome: string | null }, value: string): string {
+      if (this.outcome == null) {
+        return value
+      }
+      return this.outcome
+    }
   },
   timestamp: {
     type: Date,
@@ -43,6 +32,6 @@ const GameSchema = new Schema({
   }
 })
 
-const Game = models.Game || model('Game', GameSchema)
+const SonicRocky = models.SonicRocky || model('SonicRocky', SonicRockySchema)
 
-export default Game
+export default SonicRocky

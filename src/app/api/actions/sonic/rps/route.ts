@@ -19,17 +19,17 @@ export const GET = async (req: Request) => {
       actions: [
         {
           label: "Play",
-          href: `/api/actions/eclipse/backend?amount={amount}&choice={choice}`,
+          href: `/api/actions/sonic/backend?amount={amount}&choice={choice}`,
           parameters: [
             {
               type: "select",
               name: "amount",
-              label: "Bet Amount in ETH",
+              label: "Bet Amount in SOL",
               required: true,
               options: [
-                { label: "0.01 ETH", value: "0.01", selected: true },
-                { label: "0.05 ETH", value: "0.05" },
-                { label: "0.1 ETH", value: "0.1" }
+                { label: "0.01 SOL", value: "0.01", selected: true },
+                { label: "0.05 SOL", value: "0.05" },
+                { label: "0.1 SOL", value: "0.1" }
               ]
             },
             {

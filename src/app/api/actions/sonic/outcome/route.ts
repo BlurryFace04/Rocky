@@ -10,6 +10,7 @@ import {
 } from "@solana/actions"
 import {
   clusterApiUrl,
+  Commitment,
   ComputeBudgetProgram,
   Connection,
   Keypair,
@@ -22,10 +23,9 @@ import {
 import bs58 from "bs58"
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import { connectToDB } from '@/utils/database'
-import Rocky from '@/models/rocky'
-import Game from '@/models/game'
+import SonicRocky from '@/models/sonic_rocky'
+import SonicGame from '@/models/sonic_game'
 import crypto from 'crypto'
-import { v4 as uuidv4 } from 'uuid'
 
 export const POST = async (req: Request) => {
   await connectToDB()
@@ -68,7 +68,7 @@ export const POST = async (req: Request) => {
     }
 
     // Check if the signature already exists in other documents
-    const existingGame = await Game.findOne({ signature: body.signature, _id: { $ne: id } });
+    const existingGame = await SonicGame.findOne({ signature: body.signature, _id: { $ne: id } });
     if (existingGame) {
       return new Response(JSON.stringify({ message: "Signature already used" }), {
         status: 403,
@@ -79,7 +79,7 @@ export const POST = async (req: Request) => {
       })
     }
 
-    const rocky = await Rocky.findById(id)
+    const rocky = await SonicRocky.findById(id)
     if (!rocky) {
       return new Response(JSON.stringify({ message: "Rocky not found" }), {
         status: 403,
@@ -106,41 +106,37 @@ export const POST = async (req: Request) => {
     const randomByte = crypto.randomBytes(1)[0]; // Generate one random byte
     console.log("Random byte generated:", randomByte);
 
-    if (randomByte < 77) {  // Approximately 30%
+    if (randomByte < 90) {  // Approximately 35%
       outcome = "win"; 
-    } else if (randomByte < 192) { // Approximately 45% 
+    } else if (randomByte < 192) { // Approximately 40% 
       outcome = "lose";
     } else {
       outcome = "draw"; // Approximately 25%
     }
 
-    console.log("Outcome:", outcome)
+    // if (randomByte < 77) {  // Approximately 30%
+    //   outcome = "win"; 
+    // } else if (randomByte < 192) { // Approximately 45% 
+    //   outcome = "lose";
+    // } else {
+    //   outcome = "draw"; // Approximately 25%
+    // }
 
+
+    console.log("Outcome:", outcome);
+    
     rocky.outcome = outcome
     await rocky.save()
 
-    const nonce = uuidv4()
-
-    const game = await Game.create({
+    const game = await SonicGame.create({
       address: account.toString(),
       signature: body.signature,
       choice: rocky.choice,
       amount: rocky.amount,
-      outcome: outcome,
-      nonce: nonce
+      outcome: outcome
     })
 
     console.log("Game created: ", game)
-
-    const secretClient = new SecretManagerServiceClient()
-    const [response] = await secretClient.accessSecretVersion({ name: `projects/435887166123/secrets/rocky-solana-hmac-secret/versions/1` })
-    if (!response.payload || !response.payload.data) {
-      throw new Error('Secret payload is null or undefined')
-    }
-    const secretKey = response.payload.data.toString()
-    const hmac = crypto.createHmac('sha256', secretKey);
-    hmac.update(`${game._id.toString()}${nonce}`);
-    const signature = hmac.digest('hex');
 
     let image: string = "https://ivory-eligible-hamster-305.mypinata.cloud/ipfs/bafybeidi6qseek67vmmzc7x2ivhswer4dhhquxtzwubjvsq7li2mbd2t24"
     let title: string = "Rock Paper Scissors"
@@ -168,7 +164,7 @@ export const POST = async (req: Request) => {
       title = "You Won!"
       winAmount = Number(game.amount) * 2
       console.log("Win amount:", winAmount)
-      description = `Congratulations! You chose ${game.choice} and the opponent chose ${cpuChoice}. You won 2x in SEND! Claim your prize by clicking the button below now.`
+      description = `Congratulations! You chose ${game.choice} and the opponent chose ${cpuChoice}. You won ${winAmount} SOL! Claim your prize by clicking the button below now.`
       label = "Claim Prize!"
 
     } else if (game.outcome === "lose") {
@@ -192,22 +188,147 @@ export const POST = async (req: Request) => {
       title = "It's a Draw!"
       winAmount = Number(game.amount)
       console.log("Win amount:", winAmount)
-      description = `It's a draw! You chose ${game.choice} and the opponent chose ${cpuChoice}. You get your bet back in SEND. Play again!`
+      description = `It's a draw! You chose ${game.choice} and the opponent chose ${cpuChoice}. You get your bet back. Play again!`
       label = "Claim Back!"
     }
 
-    const payload: Action = (winAmount!=0) ? {
+    try {
+      if (game.outcome === "win" || game.outcome === "draw") {
+        const commitment: Commitment = "confirmed"
+
+        const connection = new Connection("https://sonic.helius-rpc.com", commitment)
+
+        const secretClient = new SecretManagerServiceClient()
+        const [response] = await secretClient.accessSecretVersion({ name: `projects/435887166123/secrets/rocky-eclipse-private-key/versions/1` })
+        if (!response.payload || !response.payload.data) {
+          throw new Error('Secret payload is null or undefined')
+        }
+        const PRIVATE_KEY = response.payload.data.toString()
+
+        // const PRIVATE_KEY = process.env.PRIVATE_KEY as string
+
+        const KEYPAIR = Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY))
+
+        const transaction = new Transaction()
+
+        const transferAmountSol = game.outcome === "win" ? 2 * Number(game.amount) : Number(game.amount)
+
+        transaction.add(
+          ComputeBudgetProgram.setComputeUnitPrice({
+            microLamports: 1000
+          }),
+          new TransactionInstruction({
+            programId: new PublicKey(MEMO_PROGRAM_ID),
+            data: Buffer.from(
+              `${game.outcome}_${transferAmountSol}`,
+              "utf8"
+            ),
+            keys: []
+          }),
+          SystemProgram.transfer({
+            fromPubkey: KEYPAIR.publicKey,
+            toPubkey: account,
+            lamports: transferAmountSol * LAMPORTS_PER_SOL
+          })
+        )
+
+        transaction.feePayer = KEYPAIR.publicKey
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+
+        const txHash = await connection.sendTransaction(transaction, [KEYPAIR])
+
+        console.log("Transaction sent: ", txHash)
+
+        game.rewardSignature = txHash
+        game.claimed = true
+        await game.save()
+
+      } else {
+        game.claimed = false
+        await game.save()
+      }
+
+    } catch (err) {
+      console.error(err)
+      game.claimed = false
+      await game.save()
+    }
+
+    const payload: Action = (game.outcome === "win") ? {
       type: "action",
+      title: "You won! Wanna play again?",
       icon: image,
-      title: title,
-      description: description,
-      label: label,
+      description: `\nCongratulations! You chose ${game.choice} and the opponent chose ${cpuChoice}. You won ${winAmount} SOL. Your reward will be sent to your wallet. Wanna play again?`,
+      label: "",
       links: {
         actions: [
           {
-            type: "transaction",
-            label: label,
-            href: `/api/actions/won?id=${game._id.toString()}&signature=${signature}`
+            label: "Play",
+            href: `/api/actions/sonic/backend?amount={amount}&choice={choice}`,
+            parameters: [
+              {
+                type: "select",
+                name: "amount",
+                label: "Bet Amount in SOL",
+                required: true,
+                options: [
+                  { label: "0.01 SOL", value: "0.01", selected: true },
+                  { label: "0.05 SOL", value: "0.05" },
+                  { label: "0.1 SOL", value: "0.1" }
+                ]
+              },
+              {
+                type: "radio",
+                name: "choice",
+                label: "Choose your move?",
+                required: true,
+                options: [
+                  { label: "Rock", value: "rock", selected: true },
+                  { label: "Paper", value: "paper" },
+                  { label: "Scissors", value: "scissors" },
+                ],
+              },
+            ],
+            type: "transaction"
+          }
+        ]
+      }
+    } : (game.outcome === "draw") ? {
+      type: "action",
+      title: "It's a Draw! Wanna play again?",
+      icon: image,
+      description: `\nIt's a draw! You chose ${game.choice} and the opponent chose ${cpuChoice}. Your bet will be returned to your wallet. Wanna play again?`,
+      label: "",
+      links: {
+        actions: [
+          {
+            label: "Play",
+            href: `/api/actions/sonic/backend?amount={amount}&choice={choice}`,
+            parameters: [
+              {
+                type: "select",
+                name: "amount",
+                label: "Bet Amount in SOL",
+                required: true,
+                options: [
+                  { label: "0.01 SOL", value: "0.01", selected: true },
+                  { label: "0.05 SOL", value: "0.05" },
+                  { label: "0.1 SOL", value: "0.1" }
+                ]
+              },
+              {
+                type: "radio",
+                name: "choice",
+                label: "Choose your move?",
+                required: true,
+                options: [
+                  { label: "Rock", value: "rock", selected: true },
+                  { label: "Paper", value: "paper" },
+                  { label: "Scissors", value: "scissors" },
+                ],
+              },
+            ],
+            type: "transaction"
           }
         ]
       }
@@ -221,7 +342,7 @@ export const POST = async (req: Request) => {
         actions: [
           {
             label: "Play",
-            href: `/api/actions/backend?amount={amount}&choice={choice}`,
+            href: `/api/actions/sonic/backend?amount={amount}&choice={choice}`,
             parameters: [
               {
                 type: "select",
@@ -229,9 +350,9 @@ export const POST = async (req: Request) => {
                 label: "Bet Amount in SOL",
                 required: true,
                 options: [
-                  { label: "0.1 SOL", value: "0.1", selected: true },
+                  { label: "0.01 SOL", value: "0.01", selected: true },
                   { label: "0.05 SOL", value: "0.05" },
-                  { label: "0.01 SOL", value: "0.01" }
+                  { label: "0.1 SOL", value: "0.1" }
                 ]
               },
               {

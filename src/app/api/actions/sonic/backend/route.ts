@@ -8,6 +8,7 @@ import {
 } from "@solana/actions"
 import {
   clusterApiUrl,
+  Commitment,
   ComputeBudgetProgram,
   Connection,
   Keypair,
@@ -19,9 +20,9 @@ import {
 } from "@solana/web3.js"
 import bs58 from "bs58"
 import { connectToDB } from '@/utils/database'
-import Rocky from '@/models/rocky'
+import SonicRocky from '@/models/sonic_rocky'
 
-const ADDRESS = new PublicKey("HBQwJcDCqEHr8b7LGzww1t8NxAaM9rQjA7QHSuWL7jnD")
+const ADDRESS = new PublicKey("BGh13zVibtk3kge1K3u8kTbfk4Zyqmf7coqm8YoU6Wio")
 
 export const POST = async (req: Request) => {
   await connectToDB()
@@ -32,6 +33,8 @@ export const POST = async (req: Request) => {
     const amount = url.searchParams.get("amount")
     const choice = url.searchParams.get("choice")
     // const player = url.searchParams.get("player")
+    let outcome: "win" | "lose" | "draw"
+    outcome = "lose"
 
     let label: string = ""
 
@@ -62,9 +65,9 @@ export const POST = async (req: Request) => {
     //   }
     // })
 
-    const reference = Keypair.generate()
+    const commitment: Commitment = "finalized"
 
-    const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`)
+    const connection = new Connection("https://sonic.helius-rpc.com", commitment)
     const transaction = new Transaction()
 
     transaction.add(
@@ -74,9 +77,7 @@ export const POST = async (req: Request) => {
       new TransactionInstruction({
         programId: new PublicKey(MEMO_PROGRAM_ID),
         data: Buffer.from(`${choice}_${amount}`, "utf8"),
-        keys: [
-          { pubkey: reference.publicKey, isSigner: true, isWritable: false }
-        ]
+        keys: []
       }),
       SystemProgram.transfer({
         fromPubkey: account,
@@ -91,7 +92,7 @@ export const POST = async (req: Request) => {
       await connection.getLatestBlockhash()
     ).blockhash
 
-    const r = await Rocky.create({
+    const r = await SonicRocky.create({
       address: account.toString(),
       choice: choice,
       amount: Number(amount)
@@ -106,12 +107,10 @@ export const POST = async (req: Request) => {
         links: {
           next: {
             type: "post",
-            href: `/api/actions/outcome?id=${r._id.toString()}`
+            href: `/api/actions/sonic/outcome?id=${r._id.toString()}`
           }
         }
-      },
-      signers: [reference],
-      reference: reference.publicKey
+      }
     })
 
     console.log("Payload:", payload)

@@ -32,7 +32,7 @@ import bs58 from "bs58"
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import { connectToDB } from '@/utils/database'
 import Game from '@/models/game'
-
+import crypto from 'crypto'
 const ADDRESS = new PublicKey("HBQwJcDCqEHr8b7LGzww1t8NxAaM9rQjA7QHSuWL7jnD")
 
 const SENDCOIN_MINT_ADDRESS = new PublicKey("SENDdRQtYMWaQrBroBrJ2Q53fgVuq95CV9UPGEvpCxa")
@@ -59,8 +59,9 @@ export const POST = async (req: Request) => {
 
     const url = new URL(req.url)
     const id = url.searchParams.get("id")
+    const hmacSignature = url.searchParams.get("signature")
 
-    if (!id) {
+    if (!id || !hmacSignature) {
       return new Response('Missing required parameters', {
         status: 400,
         headers: ACTIONS_CORS_HEADERS
@@ -69,6 +70,18 @@ export const POST = async (req: Request) => {
 
     const game = await Game.findById(id)
     console.log("Game: ", game)
+
+    const nonce = game.nonce
+
+    if (!nonce) {
+      return new Response(JSON.stringify({ message: "Nonce not found" }), {
+        status: 403,
+        headers: {
+          ...ACTIONS_CORS_HEADERS,
+          'Content-Type': 'application/json'
+        }
+      })
+    }
 
     if (!game) {
       game.fake = true
@@ -85,6 +98,26 @@ export const POST = async (req: Request) => {
 
     if (game.claimed) {
       return new Response(JSON.stringify({ message: "Reward already claimed!" }), {
+        status: 403,
+        headers: {
+          ...ACTIONS_CORS_HEADERS,
+          'Content-Type': 'application/json'
+        }
+      })
+    }
+
+    const secretClientHmac = new SecretManagerServiceClient()
+    const [responseHmac] = await secretClientHmac.accessSecretVersion({ name: `projects/435887166123/secrets/rocky-solana-hmac-secret/versions/1` })
+    if (!responseHmac.payload || !responseHmac.payload.data) {
+      throw new Error('Secret payload is null or undefined')
+    }
+    const secretKey = responseHmac.payload.data.toString()
+    const hmac = crypto.createHmac('sha256', secretKey);
+    hmac.update(`${game._id.toString()}${nonce}`);
+    const expectedHmacSignature = hmac.digest('hex');
+
+    if (hmacSignature !== expectedHmacSignature) {
+      return new Response(JSON.stringify({ message: "Invalid hmac signature" }), {
         status: 403,
         headers: {
           ...ACTIONS_CORS_HEADERS,
@@ -177,7 +210,7 @@ export const POST = async (req: Request) => {
       })
     }
 
-    const connection = new Connection(`https://staked.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`)
+    const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`)
 
     const secretClient = new SecretManagerServiceClient()
     const [response] = await secretClient.accessSecretVersion({ name: `projects/435887166123/secrets/rocky-private-key/versions/1` })

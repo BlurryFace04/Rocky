@@ -78,9 +78,9 @@ export const POST = async (req: Request) => {
                 label: "Bet Amount in ETH",
                 required: true,
                 options: [
-                  { label: "0.0025 ETH", value: "0.0025"},
                   { label: "0.01 ETH", value: "0.01", selected: true },
-                  { label: "0.05 ETH", value: "0.05" }
+                  { label: "0.05 ETH", value: "0.05" },
+                  { label: "0.1 ETH", value: "0.1" }
                 ]
               },
               {

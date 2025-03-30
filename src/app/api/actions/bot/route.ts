@@ -57,7 +57,7 @@ export const POST = async (req: Request) => {
       })
     }
 
-    const connection = new Connection(`https://staked.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`)
+    const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`)
     const transaction = new Transaction()
 
     transaction.add(
